@@ -1,43 +1,44 @@
-def setBoardFunc(board, gameRatio):
+def initializeBoard(gameRatio):
+    board = []
     for i in range(0, gameRatio["row"] * gameRatio["column"]):
         board.append(" - ")
+    return board
 
-def inputPositionFunc(sign, board, gameRatio):
+# TODO: Remove the Func suffix where it is not necessary
+def getInputPosition(sign, board, gameRatio):
     print(sign + " is playing")
     print("Type untaken position (column)")
     positionInput = input("Input: ")
-    tempIndex = checkInputFunc(positionInput, board, gameRatio)
+    tempIndex = checkInput(positionInput, board, gameRatio)
     if tempIndex is None:
         return None
     return tempIndex
 
-def changePlayerFunc(signs, signInt):
-    signInt += 1
-    if signInt == 0:
-        return signs[signInt], signInt
-    return signs[signInt % len(signs)], signInt
-
-def checkInputFunc(positionInput, board, gameRatio):
+def checkInput(positionInput, board, gameRatio):
     pos = positionInput
     pos.strip()
     if not pos.isdigit():
         return None
     pos = int(pos) - 1
 
-    if pos <= gameRatio["column"] and pos >= 0:
+    if pos < gameRatio["column"] and pos >= 0:
         for i in range(gameRatio["row"] - 1, -1, -1):
             tempIndex = i * gameRatio["column"] + pos
+            # TODO: Consider using just "-" to store the state
             if board[tempIndex] == " - ":
                 return tempIndex
     print("Type valid position max:" + str(gameRatio["column"]))
     return None
 
-def addPositionFunc(board, gameRatio, currentSign, inputPosition):
+def changePlayerFunc(signs, signInt):
+    signInt += 1
+    return signs[signInt % len(signs)], signInt
+
+def addPosition(board, currentSign, inputPosition):
     board[inputPosition] = currentSign
     return board
 
-
-def displayBoardFunc(board, gameRatio):
+def displayBoard(board, gameRatio):
     for i in range(gameRatio["row"]):
         for j in range(gameRatio["column"]):
             print(board[i * gameRatio["column"] + j], end="")
@@ -47,41 +48,110 @@ def displayBoardFunc(board, gameRatio):
         print(f" {i} ", end="")
     print("")
 
+def findRowValidIndex(position, step, finish):
+    positionMinus = 0
+    while (position + 1 + positionMinus * step) % gameRatio["column"] != finish:
+        if positionMinus == 4:
+            break
+        positionMinus += 1
+    return positionMinus
+
+def findColValidIndex(rowIndex, step, finish):
+    positionMinus = 0
+    while True:
+        if positionMinus == 4:
+            break
+        if rowIndex + positionMinus * step == finish:
+            break
+        positionMinus += 1
+    return positionMinus
+    
+def rowColCheck(board, currentSign, startIndex, endIndex, step, type):
+    rowCounter = 0
+    for i in range(startIndex, endIndex + 1, step):
+        if board[i] == currentSign:
+            rowCounter += 1
+            print("h")
+            if rowCounter == 5:
+                print(currentSign , "wins with a" , type , "line")
+                break
+        if board[i] != currentSign:
+            rowCounter = 0
+
 def checkWin(position, board, gameRatio, currentSign):
     rowIndex = position // gameRatio["column"]
-    #print("max/min i", max(rowIndex, position - 4 * gameRatio["column"]),min(position + gameRatio["column"] * rowIndex + 1, position + 4 * gameRatio["column"] + 1))
-    print("row", rowIndex)
-    countStartRow = 0
-    countEndRow = 0
-    rowMultiplier = 1
-    rowIndexStart = max(rowIndex, position - 4 * gameRatio["column"])
-    rowIndexEnd = min(position + 4 * gameRatio["column"] + 1, position + gameRatio["column"] * rowIndex + 1)
-    
-    c = position % gameRatio["column"]
-    countStartRow = min(4, c) 
-    countEndRow = min(4, (gameRatio["column"] - 1) - c)
+    colIndex = position % gameRatio["column"]
 
-    print("position", position)
-    print("start", countStartRow, "end", countEndRow)
-    for i in range(rowIndexStart, rowIndexEnd, gameRatio["column"]):
-        for j in range(max(i - countStartRow, i - 4), min(i + countEndRow + 1, i + 5)):
-            print(j, end="")
-        print("")
+    # number of posible turns back and fourth in row
+    rowValidIndexMinusStart = findRowValidIndex(position, -1, 1)
+    rowValidIndexMinusEnd = findRowValidIndex(position, 1, 0)
+
+    # position minus posible moves (min and max positions) row
+    rowStartIndex = position - rowValidIndexMinusStart
+    rowEndIndex = position + rowValidIndexMinusEnd
+
+    # number of posible turns back and fourth in column
+    colValidIndexMinusStart = findColValidIndex(rowIndex, -1, 0)
+    colValidIndexMinusEnd = findColValidIndex(rowIndex, 1, gameRatio["row"] - 1)
+    
+    # position minus posible moves (min and max positions) column
+    colStartIndex = position - gameRatio["column"] * colValidIndexMinusStart
+    colEndIndex = position + gameRatio["column"] * colValidIndexMinusEnd
+    
+    print("start row", rowStartIndex, "end row", rowEndIndex)
+    print("start col", colStartIndex, "end col", colEndIndex)
+
+    rowColCheck(board, currentSign, rowStartIndex, rowEndIndex, 1, "row")
+    rowColCheck(board, currentSign, colStartIndex, colEndIndex, gameRatio["column"], "column")
+
+    counter = 1
+    correctCounter = 0
+    minTemp = min(rowValidIndexMinusStart, colValidIndexMinusStart)
+    pos = position - minTemp - minTemp * gameRatio["column"]
+    while pos >= 0 and pos < gameRatio["column"] * gameRatio["row"]:
+        if board[pos] == currentSign:
+            correctCounter += 1
+            if correctCounter == 5:
+                print(currentSign , "wins with a diagonal to right")
+                break
+        else:
+            correctCounter = 0
+       
+        pos = pos + 1 + 1 * gameRatio["column"]
+        counter += 1
+    
+    counter = 1
+    correctCounter = 0
+    minTemp = min(rowValidIndexMinusEnd, colValidIndexMinusStart)
+    pos = position + minTemp - minTemp * gameRatio["column"]
+    while pos >= 0 and pos < gameRatio["column"] * gameRatio["row"]:
+        if board[pos] == currentSign:
+            correctCounter += 1
+            if correctCounter == 5:
+                print(currentSign , "wins with a diagonal to left")
+                break
+        else:
+            correctCounter = 0
+       
+        print(pos)
+        pos = pos - 1 + 1 * gameRatio["column"]
+        counter += 1
+
+  
 
 gameRatio = {"row":7,"column":7}
 endGame = False
 signs = [" x ", " o "]
 signInt = -1
 inputPosition = None
-board = []
 
-setBoardFunc(board, gameRatio)
+board = initializeBoard(gameRatio)
 
 while not endGame:
     currentSign, signInt = changePlayerFunc(signs, signInt)
     while inputPosition == None:
-        inputPosition = inputPositionFunc(currentSign, board, gameRatio)
-    addPositionFunc(board, gameRatio, currentSign, inputPosition)
+        inputPosition = getInputPosition(currentSign, board, gameRatio)
+    addPosition(board, currentSign, inputPosition)
     checkWin(inputPosition, board, gameRatio, currentSign)
     inputPosition = None
-    displayBoardFunc(board, gameRatio)
+    displayBoard(board, gameRatio)
